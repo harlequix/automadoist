@@ -1,0 +1,4 @@
+services:
+  godoist:
+    build: .
+    command: next_items
