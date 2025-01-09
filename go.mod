@@ -3,7 +3,7 @@ module github.com/harlequix/automadoist
 go 1.23.4
 
 require (
-	github.com/harlequix/godoist v0.0.0-20250106184409-cefc757b24ca
+	github.com/harlequix/godoist v0.0.0-20250109075125-661838fe2a62
 	github.com/k0kubun/pp v3.0.1+incompatible
 	github.com/knadh/koanf/parsers/yaml v0.1.0
 	github.com/knadh/koanf/providers/file v1.1.2
@@ -12,8 +12,8 @@ require (
 )
 
 require (
-	github.com/cpuguy83/go-md2man/v2 v2.0.5 // indirect
-	github.com/fsnotify/fsnotify v1.7.0 // indirect
+	github.com/cpuguy83/go-md2man/v2 v2.0.6 // indirect
+	github.com/fsnotify/fsnotify v1.8.0 // indirect
 	github.com/go-viper/mapstructure/v2 v2.2.1 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/k0kubun/colorstring v0.0.0-20150214042306-9440f1994b88 // indirect
