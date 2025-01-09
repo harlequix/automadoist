@@ -18,6 +18,8 @@ require (
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/k0kubun/colorstring v0.0.0-20150214042306-9440f1994b88 // indirect
 	github.com/knadh/koanf/maps v0.1.1 // indirect
+	github.com/knadh/koanf/providers/cliflagv2 v0.0.0-20250101080848-4a21f9b42785 // indirect
+	github.com/knadh/koanf/providers/env v1.0.0 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
