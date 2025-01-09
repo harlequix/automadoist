@@ -128,7 +128,7 @@ func getNextTasks(project godoist.Project, cfg NextItemsConfig) []*godoist.Task 
 		subtasks := task.GetChildren()
 		//TODO: implement switch for sequential order
 		sort.Slice(subtasks, func(i, j int) bool {
-			return subtasks[i].Order > subtasks[j].Order
+			return subtasks[i].Order < subtasks[j].Order
 		})
 		if len(subtasks) == 0 {
 			if strings.HasPrefix(name, cfg.SkipPrefixes[0]) {
@@ -155,7 +155,7 @@ func getNextTasks(project godoist.Project, cfg NextItemsConfig) []*godoist.Task 
 			nextTasks = append(nextTasks, task)
 		} else {
 			if strings.HasSuffix(name, cfg.SequentialMarker) {
-				logger.Debug("Sequential task", "tasks", subtasks)
+				logger.Debug("Sequential task", "tasks", subtasks, "order", subtasks[len(subtasks)-1].Order)
 				working_on = append(working_on, subtasks[len(subtasks)-1])
 			} else {
 				working_on = append(working_on, subtasks...)
