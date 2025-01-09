@@ -1,3 +1,4 @@
 automadoist
 config.yaml
 .dockerignore
+.env
