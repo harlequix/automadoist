@@ -10,7 +10,7 @@ RUN go mod download
 
 COPY . ./
 
-RUN CGO_ENABLED=0 GOOS=linux go build -o /godoist
+RUN CGO_ENABLED=0 GOOS=linux go build -o /automadoist
 
 # Run the tests in the container
 FROM build-stage AS run-test-stage
@@ -21,8 +21,8 @@ FROM gcr.io/distroless/base-debian11 AS build-release-stage
 
 WORKDIR /
 
-COPY --from=build-stage /godoist /godoist
+COPY --from=build-stage /automadoist /automadoist
 
 USER nonroot:nonroot
 
-ENTRYPOINT ["/godoist"]
+ENTRYPOINT ["/automadoist"]

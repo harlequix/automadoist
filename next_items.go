@@ -9,14 +9,14 @@ import (
 )
 
 type NextItemsConfig struct {
-	EntryPoint       string
-	SkipPrefixes     []string
-	Recursive        bool
-	SequentialMarker string
-	SkipDeadline     string
-	managed_labels   []string
-	IgnoreLabels     []string
-	Prune            bool
+	EntryPoint       string   `koanf:"entry_point"`
+	SkipPrefixes     []string `koanf:"skip_prefixes"`
+	Recursive        bool     `koanf:"recursive"`
+	SequentialMarker string   `koanf:"sequential_marker"`
+	SkipDeadline     string   `koanf:"skip_deadline"`
+	ManagedLabels    []string `koanf:"managed_labels"`
+	IgnoreLabels     []string `koanf:"ignore_labels"`
+	Prune            bool     `koanf:"prune"`
 }
 
 func defaultNextItemsConfig() NextItemsConfig {
@@ -26,39 +26,30 @@ func defaultNextItemsConfig() NextItemsConfig {
 		Recursive:        true,
 		SequentialMarker: "!",
 		SkipDeadline:     "not_overdue",
-		managed_labels:   []string{"next"},
-		IgnoreLabels:     []string{"waiting"},
+		ManagedLabels:    []string{"next"},
+		IgnoreLabels:     []string{"waiting", "review"},
 		Prune:            true,
 	}
 }
 
-func next_items(client *godoist.Todoist, cfg NextItemsConfig) {
+func process_next_items(client *godoist.Todoist, cfg NextItemsConfig) {
 	entry_search := client.Projects.GetByName(cfg.EntryPoint)
 	if len(entry_search) != 1 {
 		logger.Error("Entry point not found")
 		return
 	}
 	entry := entry_search[0]
-	var allProjects []godoist.Project
-	var collectProjects func(project godoist.Project)
 
-	collectProjects = func(project godoist.Project) {
-		allProjects = append(allProjects, project)
-		for _, subproject := range project.GetChildren() {
-			collectProjects(*subproject)
-		}
-	}
-
-	collectProjects(*entry)
+	allSubProjects := collectProjects(*entry)
 	allTasks := client.Tasks.All()
 	nextTasks := []*godoist.Task{}
-	for _, project := range allProjects {
+	for _, project := range allSubProjects {
 		tasks := getNextTasks(project, cfg)
 		nextTasks = append(nextTasks, tasks...)
 	}
 	var hasManagedLabel []*godoist.Task
 	for _, task := range allTasks {
-		if hasLabel(cfg.managed_labels, task) {
+		if hasLabel(cfg.ManagedLabels, task) {
 			hasManagedLabel = append(hasManagedLabel, task)
 		}
 	}
@@ -72,23 +63,32 @@ func next_items(client *godoist.Todoist, cfg NextItemsConfig) {
 
 	var needAddition []*godoist.Task
 	for _, t := range nextTasks {
-		if !hasLabel(cfg.managed_labels, t) {
+		if !hasLabel(cfg.ManagedLabels, t) {
 			needAddition = append(needAddition, t)
 		}
 	}
 
 	for _, t := range needAddition {
-		logger.Debug("Add label to task", "task", t.Content, "label", cfg.managed_labels[0])
-		t.AddLabel(cfg.managed_labels[0])
+		logger.Debug("Add label to task", "task", t.Content, "label", cfg.ManagedLabels[0])
+		t.AddLabel(cfg.ManagedLabels[0])
 	}
 
 	for _, t := range needRemoval {
-		logger.Debug("Remove label from task", "task", t.Content, "label", cfg.managed_labels[0])
-		t.RemoveLabel(cfg.managed_labels[0])
+		logger.Debug("Remove label from task", "task", t.Content, "label", cfg.ManagedLabels[0])
+		t.RemoveLabel(cfg.ManagedLabels[0])
 	}
 
 	client.API.Commit()
 
+}
+
+func collectProjects(project godoist.Project) []godoist.Project {
+	var allProjects []godoist.Project
+	allProjects = append(allProjects, project)
+	for _, subproject := range project.GetChildren() {
+		allProjects = append(allProjects, collectProjects(*subproject)...)
+	}
+	return allProjects
 }
 
 func isTaskInList(task *godoist.Task, taskList []*godoist.Task) bool {
@@ -98,6 +98,14 @@ func isTaskInList(task *godoist.Task, taskList []*godoist.Task) bool {
 		}
 	}
 	return false
+}
+
+func GetTasks(projects []godoist.Project) []*godoist.Task {
+	var tasks []*godoist.Task
+	for _, project := range projects {
+		tasks = append(tasks, project.GetTasks()...)
+	}
+	return tasks
 }
 
 func hasLabel(labels []string, task *godoist.Task) bool {
@@ -131,7 +139,7 @@ func getNextTasks(project godoist.Project, cfg NextItemsConfig) []*godoist.Task 
 			return subtasks[i].Order < subtasks[j].Order
 		})
 		if len(subtasks) == 0 {
-			if strings.HasPrefix(name, cfg.SkipPrefixes[0]) {
+			if len(cfg.SkipPrefixes) > 0 && strings.HasPrefix(name, cfg.SkipPrefixes[0]) {
 				continue
 			}
 			if cfg.SkipDeadline == "not_overdue" && task.Deadline != nil && task.Deadline.ParsedDate.After(now) {
