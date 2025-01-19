@@ -2,10 +2,13 @@ services:
   godoist:
     build: .
     command: next_items
+    env_file:
+      - .env
 
   cron:
     build:
       context: .
       dockerfile: Dockerfile.cron
     environment:
-      - CRON_TODOIST=* /15 * * * /godoist --debug next_items
+      - CRON_TODOIST=*/15 * * * * /automadoist --debug next_items
+      - GODOIST_TOKEN=${GODOIST_TOKEN}

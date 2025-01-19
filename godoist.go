@@ -79,6 +79,7 @@ func getConfig(c *cli.Context) (*config, error) {
 		return strings.Replace(strings.ToLower(
 			strings.TrimPrefix(s, ENV_PREFIX)), "_", ".", -1)
 	}), nil)
+	logger.Debug("Loaded configuration", "config", k.Raw())
 	k.Unmarshal("", &cfg) // Why is this necessary?
 	err = k.Unmarshal(".", &cfg)
 	if err != nil {
