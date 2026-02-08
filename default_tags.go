@@ -9,6 +9,10 @@ import (
 	"github.com/harlequix/godoist"
 )
 
+type DefaultTagsConfig struct {
+	AvailableTags []string `koanf:"available_tags"`
+}
+
 var defaultTagsRegex = regexp.MustCompile(`\[automadoist:tags=([^\]]+)\]`)
 
 func parseDefaultTags(description string) []string {
@@ -70,7 +74,11 @@ func applyDefaultTags(client *godoist.Todoist, nextTasks []*godoist.Task, projec
 	}
 }
 
-func defaultTagsCommand(client *godoist.Todoist) error {
+func defaultTagsCommand(client *godoist.Todoist, cfg DefaultTagsConfig) error {
+	if len(cfg.AvailableTags) == 0 {
+		return fmt.Errorf("no available tags configured; set default_tags.available_tags in config")
+	}
+
 	allProjects := client.Projects.All()
 	if len(allProjects) == 0 {
 		return fmt.Errorf("no projects found")
@@ -105,44 +113,35 @@ func defaultTagsCommand(client *godoist.Todoist) error {
 	}
 
 	currentTags := parseDefaultTags(project.Description)
-	prefill := strings.Join(currentTags, ", ")
+	currentSet := make(map[string]bool, len(currentTags))
+	for _, t := range currentTags {
+		currentSet[t] = true
+	}
 
-	var tagsInput string
+	tagOptions := make([]huh.Option[string], 0, len(cfg.AvailableTags))
+	for _, tag := range cfg.AvailableTags {
+		tagOptions = append(tagOptions, huh.NewOption(tag, tag).Selected(currentSet[tag]))
+	}
+
+	var selectedTags []string
 	err = huh.NewForm(
 		huh.NewGroup(
-			huh.NewInput().
-				Title("Default tags (comma-separated)").
-				Description("Current project: " + project.Name).
-				Value(&tagsInput).
-				Placeholder("tag1, tag2, tag3").
-				SuggestionsFunc(func() []string { return currentTags }, &prefill),
+			huh.NewMultiSelect[string]().
+				Title("Default tags for " + project.Name).
+				Options(tagOptions...).
+				Value(&selectedTags),
 		),
 	).Run()
 	if err != nil {
 		return err
 	}
 
-	// Workaround: set prefill manually since huh Input doesn't have a direct pre-fill
-	if tagsInput == "" && prefill != "" {
-		// User submitted empty, meaning clear tags
-	}
-
-	var newTags []string
-	if tagsInput != "" {
-		for _, t := range strings.Split(tagsInput, ",") {
-			t = strings.TrimSpace(t)
-			if t != "" {
-				newTags = append(newTags, t)
-			}
-		}
-	}
-
-	newDescription := setDefaultTagsInDescription(project.Description, newTags)
+	newDescription := setDefaultTagsInDescription(project.Description, selectedTags)
 	project.Update("description", newDescription)
 	client.API.Commit()
 
-	if len(newTags) > 0 {
-		fmt.Printf("Set default tags for %q: %s\n", project.Name, strings.Join(newTags, ", "))
+	if len(selectedTags) > 0 {
+		fmt.Printf("Set default tags for %q: %s\n", project.Name, strings.Join(selectedTags, ", "))
 	} else {
 		fmt.Printf("Cleared default tags for %q\n", project.Name)
 	}

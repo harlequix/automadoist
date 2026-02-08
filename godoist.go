@@ -17,9 +17,10 @@ import (
 )
 
 type config struct {
-	Token         string          `koanf:"token"`
-	NextItems     NextItemsConfig `koanf:"next_items"`
-	ReviewsConfig ReviewsConfig   `koanf:"reviews"`
+	Token         string            `koanf:"token"`
+	NextItems     NextItemsConfig   `koanf:"next_items"`
+	ReviewsConfig ReviewsConfig     `koanf:"reviews"`
+	DefaultTags   DefaultTagsConfig `koanf:"default_tags"`
 }
 
 func (c config) Verify() error {
@@ -163,7 +164,7 @@ func main() {
 					if err := client.Sync(); err != nil {
 						return err
 					}
-					return defaultTagsCommand(client)
+					return defaultTagsCommand(client, cfg.DefaultTags)
 				},
 			},
 			{
