@@ -125,66 +125,67 @@ func defaultTagsCommand(client *godoist.Todoist, cfg DefaultTagsConfig) error {
 
 	sortProjectsByOrder(allProjects)
 
-	options := make([]huh.Option[string], 0, len(allProjects))
-	for _, p := range allProjects {
-		label := p.Name
-		tags := parseDefaultTags(p.Description)
-		if len(tags) > 0 {
-			label += " [" + strings.Join(tags, ", ") + "]"
+	for {
+		options := make([]huh.Option[string], 0, len(allProjects))
+		for _, p := range allProjects {
+			label := p.Name
+			tags := parseDefaultTags(p.Description)
+			if len(tags) > 0 {
+				label += " [" + strings.Join(tags, ", ") + "]"
+			}
+			options = append(options, huh.NewOption(label, p.ID))
 		}
-		options = append(options, huh.NewOption(label, p.ID))
-	}
 
-	var projectID string
-	err := huh.NewForm(
-		huh.NewGroup(
-			huh.NewSelect[string]().
-				Title("Select a project").
-				Options(options...).
-				Value(&projectID),
-		),
-	).Run()
-	if err != nil {
-		return err
-	}
+		var projectID string
+		err := huh.NewForm(
+			huh.NewGroup(
+				huh.NewSelect[string]().
+					Title("Select a project").
+					Options(options...).
+					Value(&projectID),
+			),
+		).Run()
+		if err != nil {
+			return nil
+		}
 
-	project := client.Projects.Get(projectID)
-	if project == nil {
-		return fmt.Errorf("project not found: %s", projectID)
-	}
+		project := client.Projects.Get(projectID)
+		if project == nil {
+			return fmt.Errorf("project not found: %s", projectID)
+		}
 
-	currentTags := parseDefaultTags(project.Description)
-	currentSet := make(map[string]bool, len(currentTags))
-	for _, t := range currentTags {
-		currentSet[t] = true
-	}
+		currentTags := parseDefaultTags(project.Description)
+		currentSet := make(map[string]bool, len(currentTags))
+		for _, t := range currentTags {
+			currentSet[t] = true
+		}
 
-	tagOptions := make([]huh.Option[string], 0, len(cfg.AvailableTags))
-	for _, tag := range cfg.AvailableTags {
-		tagOptions = append(tagOptions, huh.NewOption(tag, tag).Selected(currentSet[tag]))
-	}
+		tagOptions := make([]huh.Option[string], 0, len(cfg.AvailableTags))
+		for _, tag := range cfg.AvailableTags {
+			tagOptions = append(tagOptions, huh.NewOption(tag, tag).Selected(currentSet[tag]))
+		}
 
-	var selectedTags []string
-	err = huh.NewForm(
-		huh.NewGroup(
-			huh.NewMultiSelect[string]().
-				Title("Default tags for " + project.Name).
-				Options(tagOptions...).
-				Value(&selectedTags),
-		),
-	).Run()
-	if err != nil {
-		return err
-	}
+		var selectedTags []string
+		err = huh.NewForm(
+			huh.NewGroup(
+				huh.NewMultiSelect[string]().
+					Title("Default tags for " + project.Name).
+					Options(tagOptions...).
+					Value(&selectedTags),
+			),
+		).Run()
+		if err != nil {
+			return nil
+		}
 
-	newDescription := setDefaultTagsInDescription(project.Description, selectedTags)
-	project.Update("description", newDescription)
-	client.API.Commit()
+		newDescription := setDefaultTagsInDescription(project.Description, selectedTags)
+		project.Update("description", newDescription)
+		client.API.Commit()
 
-	if len(selectedTags) > 0 {
-		fmt.Printf("Set default tags for %q: %s\n", project.Name, strings.Join(selectedTags, ", "))
-	} else {
-		fmt.Printf("Cleared default tags for %q\n", project.Name)
+		if len(selectedTags) > 0 {
+			fmt.Printf("Set default tags for %q: %s\n", project.Name, strings.Join(selectedTags, ", "))
+		} else {
+			fmt.Printf("Cleared default tags for %q\n", project.Name)
+		}
 	}
-	return nil
 }
