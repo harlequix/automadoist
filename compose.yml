@@ -3,7 +3,7 @@ services:
     build:
       context: ..
       dockerfile: automadoist/Dockerfile
-    command: next_items
+    command: --debug next_items
     env_file:
       - .env
 

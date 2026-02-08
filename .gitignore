@@ -2,3 +2,4 @@ automadoist
 config.yaml
 .dockerignore
 .env
+.claude/
