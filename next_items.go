@@ -9,14 +9,15 @@ import (
 )
 
 type NextItemsConfig struct {
-	EntryPoint       string   `koanf:"entry_point"`
-	SkipPrefixes     []string `koanf:"skip_prefixes"`
-	Recursive        bool     `koanf:"recursive"`
-	SequentialMarker string   `koanf:"sequential_marker"`
-	SkipDeadline     string   `koanf:"skip_deadline"`
-	ManagedLabels    []string `koanf:"managed_labels"`
-	IgnoreLabels     []string `koanf:"ignore_labels"`
-	Prune            bool     `koanf:"prune"`
+	EntryPoint       string         `koanf:"entry_point"`
+	SkipPrefixes     []string       `koanf:"skip_prefixes"`
+	Recursive        bool           `koanf:"recursive"`
+	SequentialMarker string         `koanf:"sequential_marker"`
+	SkipDeadline     string         `koanf:"skip_deadline"`
+	ManagedLabels    []string       `koanf:"managed_labels"`
+	IgnoreLabels     []string       `koanf:"ignore_labels"`
+	Prune            bool           `koanf:"prune"`
+	ColorPriority    map[string]int `koanf:"color_priority"`
 }
 
 func defaultNextItemsConfig() NextItemsConfig {
@@ -33,6 +34,8 @@ func defaultNextItemsConfig() NextItemsConfig {
 }
 
 func process_next_items(client *godoist.Todoist, cfg NextItemsConfig) {
+	logger.Debug("Processing next items", "config", cfg)
+	logger.Debug("Entry point", "entry_point", cfg.EntryPoint)
 	entry_search := client.Projects.GetByName(cfg.EntryPoint)
 	if len(entry_search) != 1 {
 		logger.Error("Entry point not found")
@@ -78,8 +81,7 @@ func process_next_items(client *godoist.Todoist, cfg NextItemsConfig) {
 		t.RemoveLabel(cfg.ManagedLabels[0])
 	}
 
-	client.API.Commit()
-
+	applyColorPriorities(client, allSubProjects, cfg)
 }
 
 func collectProjects(project godoist.Project) []godoist.Project {
@@ -106,6 +108,15 @@ func GetTasks(projects []godoist.Project) []*godoist.Task {
 		tasks = append(tasks, project.GetTasks()...)
 	}
 	return tasks
+}
+
+func hasPrefix(s string, prefixes []string) bool {
+	for _, p := range prefixes {
+		if strings.HasPrefix(s, p) {
+			return true
+		}
+	}
+	return false
 }
 
 func hasLabel(labels []string, task *godoist.Task) bool {
@@ -139,7 +150,7 @@ func getNextTasks(project godoist.Project, cfg NextItemsConfig) []*godoist.Task 
 			return subtasks[i].Order < subtasks[j].Order
 		})
 		if len(subtasks) == 0 {
-			if len(cfg.SkipPrefixes) > 0 && strings.HasPrefix(name, cfg.SkipPrefixes[0]) {
+			if hasPrefix(name, cfg.SkipPrefixes) {
 				continue
 			}
 			if cfg.SkipDeadline == "not_overdue" && task.Deadline != nil && task.Deadline.ParsedDate.After(now) {
@@ -173,4 +184,22 @@ func getNextTasks(project godoist.Project, cfg NextItemsConfig) []*godoist.Task 
 	}
 
 	return nextTasks
+}
+
+func applyColorPriorities(client *godoist.Todoist, projects []godoist.Project, cfg NextItemsConfig) {
+	if len(cfg.ColorPriority) == 0 {
+		return
+	}
+	for _, project := range projects {
+		priority, ok := cfg.ColorPriority[project.Color]
+		if !ok {
+			continue
+		}
+		for _, task := range project.GetTasks() {
+			if task.Priority == godoist.VERY_LOW {
+				logger.Debug("Setting priority from project color", "task", task.Content, "project", project.Name, "color", project.Color, "priority", priority)
+				task.Update("priority", godoist.PRIORITY_LEVEL(priority))
+			}
+		}
+	}
 }

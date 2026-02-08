@@ -1,14 +1,16 @@
 # syntax=docker/dockerfile:1
 
 # Build the application from source
-FROM golang:1.23 AS build-stage
+FROM golang:1.25 AS build-stage
 
 WORKDIR /app
 
-COPY go.mod go.sum ./
-RUN go mod download
+COPY automadoist/go.mod automadoist/go.sum ./
+RUN go mod edit -dropreplace github.com/harlequix/godoist && go mod tidy && go mod download
 
-COPY . ./
+COPY automadoist/ ./
+COPY godoist/ /godoist/
+RUN go mod edit -replace github.com/harlequix/godoist=/godoist
 
 RUN CGO_ENABLED=0 GOOS=linux go build -o /automadoist
 

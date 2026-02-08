@@ -1,8 +1,6 @@
 package main
 
 import (
-	"strings"
-
 	"github.com/harlequix/godoist"
 )
 
@@ -28,17 +26,21 @@ func defaultReviewsConfig(cfg NextItemsConfig) ReviewsConfig {
 func prepare(cfg ReviewsConfig, nextItemsConfig NextItemsConfig) NextItemsConfig {
 	out := nextItemsConfig
 	for _, prefix := range cfg.Prefixes {
-		for i, skip := range out.SkipPrefixes {
-			if skip == prefix {
-				out.SkipPrefixes = append(out.SkipPrefixes[:i], out.SkipPrefixes[i+1:]...)
+		var filtered []string
+		for _, skip := range out.SkipPrefixes {
+			if skip != prefix {
+				filtered = append(filtered, skip)
 			}
 		}
+		out.SkipPrefixes = filtered
 	}
-	for i, label := range out.IgnoreLabels {
-		if label == cfg.Label {
-			out.IgnoreLabels = append(out.IgnoreLabels[:i], out.IgnoreLabels[i+1:]...)
+	var filtered []string
+	for _, label := range out.IgnoreLabels {
+		if label != cfg.Label {
+			filtered = append(filtered, label)
 		}
 	}
+	out.IgnoreLabels = filtered
 	return out
 }
 
@@ -62,7 +64,7 @@ func reviews(client *godoist.Todoist, cfg ReviewsConfig) {
 	reviewTasks := []*godoist.Task{}
 	for _, item := range next_items {
 		logger.Debug("Processing item", "item", item)
-		if strings.HasPrefix(item.Content, cfg.Prefixes[0]) {
+		if hasPrefix(item.Content, cfg.Prefixes) {
 			reviewTasks = append(reviewTasks, item)
 			if !hasLabel([]string{cfg.Label}, item) {
 				logger.Debug("Adding label", "label", cfg.Label, "item", item)

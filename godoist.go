@@ -39,7 +39,9 @@ func init() {
 	level.Set(slog.LevelInfo)
 	logger = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
 		Level: level,
+		AddSource: true,
 	}))
+	slog.SetDefault(logger)
 }
 
 var defaultConfig = config{
@@ -70,18 +72,22 @@ func getConfig(c *cli.Context) (*config, error) {
 	logger.Info("Todoist client created")
 	if c.String("config") != "" {
 		logger.Debug("Loading configuration from file", "file", c.String("config"))
-		k.Load(file.Provider(c.String("config")), yaml.Parser())
-
+		if err := k.Load(file.Provider(c.String("config")), yaml.Parser()); err != nil {
+			return nil, fmt.Errorf("loading config file: %w", err)
+		}
 	}
 	p := cliflagv2.Provider(c, "godoist")
-	k.Load(p, nil)
-	k.Load(env.Provider(ENV_PREFIX, ".", func(s string) string {
+	if err := k.Load(p, nil); err != nil {
+		return nil, fmt.Errorf("loading cli flags: %w", err)
+	}
+	if err := k.Load(env.Provider(ENV_PREFIX, ".", func(s string) string {
 		return strings.Replace(strings.ToLower(
 			strings.TrimPrefix(s, ENV_PREFIX)), "_", ".", -1)
-	}), nil)
+	}), nil); err != nil {
+		return nil, fmt.Errorf("loading env vars: %w", err)
+	}
 	logger.Debug("Loaded configuration", "config", k.Raw())
-	k.Unmarshal("", &cfg) // Why is this necessary?
-	err = k.Unmarshal(".", &cfg)
+	err = k.Unmarshal("", &cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -135,8 +141,11 @@ func main() {
 					}
 					logger.Debug("loaded and verified config", "config", cfg)
 					client := godoist.NewTodoist(cfg.Token)
-					client.Sync()
+					if err := client.Sync(); err != nil {
+						return err
+					}
 					process_next_items(client, cfg.NextItems)
+					client.API.Commit()
 					finish := time.Now()
 					logger.Info("Finished", "duration", finish.Sub(start))
 					return nil
@@ -152,7 +161,9 @@ func main() {
 					}
 					logger.Debug("loaded and verified config", "config", cfg)
 					client := godoist.NewTodoist(cfg.Token)
-					client.Sync()
+					if err := client.Sync(); err != nil {
+						return err
+					}
 					if cfg.ReviewsConfig.NextItemsConfig.EntryPoint == "" {
 						cfg.ReviewsConfig.NextItemsConfig = cfg.NextItems
 					}
