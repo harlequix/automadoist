@@ -81,6 +81,7 @@ func process_next_items(client *godoist.Todoist, cfg NextItemsConfig) {
 		t.RemoveLabel(cfg.ManagedLabels[0])
 	}
 
+	applyDefaultTags(client, nextTasks, allSubProjects)
 	applyColorPriorities(client, nextTasks, allSubProjects, cfg)
 }
 

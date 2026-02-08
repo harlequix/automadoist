@@ -152,6 +152,21 @@ func main() {
 				},
 			},
 			{
+				Name:  "default_tags",
+				Usage: "Configure default tags for projects",
+				Action: func(c *cli.Context) error {
+					cfg, err := getConfig(c)
+					if err != nil {
+						return err
+					}
+					client := godoist.NewTodoist(cfg.Token)
+					if err := client.Sync(); err != nil {
+						return err
+					}
+					return defaultTagsCommand(client)
+				},
+			},
+			{
 				Name:  "reviews",
 				Usage: "Manage review items in Todoist",
 				Action: func(c *cli.Context) error {
