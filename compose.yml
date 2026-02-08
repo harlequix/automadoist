@@ -3,7 +3,9 @@ services:
     build:
       context: ..
       dockerfile: automadoist/Dockerfile
-    command: --debug next_items
+    command: --config /config.yaml --debug next_items 
+    volumes:
+      - ./config.yaml:/config.yaml
     env_file:
       - .env
 
@@ -12,5 +14,7 @@ services:
       context: ..
       dockerfile: automadoist/Dockerfile.cron
     environment:
-      - CRON_TODOIST=*/15 * * * * /automadoist --debug next_items
+      - CRON_TODOIST=*/15 * * * * /automadoist --config /config.yaml --debug next_items 
       - GODOIST_TOKEN=${GODOIST_TOKEN}
+    volumes:
+      - ./config.yaml:/config.yaml

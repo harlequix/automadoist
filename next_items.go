@@ -134,7 +134,7 @@ func getNextTasks(project godoist.Project, cfg NextItemsConfig) []*godoist.Task 
 	now := time.Now()
 	var nextTasks []*godoist.Task
 	var working_on []*godoist.Task
-	logger.Debug("Number of task in project", "project", project.Name, "#", len(tasks))
+	logger.Debug("Number of task in project", "project", project.Name, "#", len(tasks), "color", project.Color)
 	for _, task := range tasks {
 		if task.ParentID == "" {
 			working_on = append(working_on, task)
