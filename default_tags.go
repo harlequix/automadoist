@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"regexp"
+	"sort"
 	"strings"
 
 	"github.com/charmbracelet/huh"
@@ -74,6 +75,44 @@ func applyDefaultTags(client *godoist.Todoist, nextTasks []*godoist.Task, projec
 	}
 }
 
+// sortProjectsByOrder sorts projects into a stable tree order matching
+// Todoist's sidebar: depth-first traversal ordered by ChildOrder at each level.
+func sortProjectsByOrder(projects []*godoist.Project) {
+	childrenOf := make(map[string][]*godoist.Project)
+	for _, p := range projects {
+		childrenOf[p.ParentID] = append(childrenOf[p.ParentID], p)
+	}
+	for _, children := range childrenOf {
+		sort.Slice(children, func(i, j int) bool {
+			return children[i].ChildOrder < children[j].ChildOrder
+		})
+	}
+
+	ordered := make([]*godoist.Project, 0, len(projects))
+	var walk func(parentID string)
+	walk = func(parentID string) {
+		for _, p := range childrenOf[parentID] {
+			ordered = append(ordered, p)
+			walk(p.ID)
+		}
+	}
+	// Root projects have ParentID "" (or possibly "0" depending on API)
+	walk("")
+	// Include any projects not reached (e.g. different root sentinel)
+	if len(ordered) < len(projects) {
+		seen := make(map[string]bool, len(ordered))
+		for _, p := range ordered {
+			seen[p.ID] = true
+		}
+		for _, p := range projects {
+			if !seen[p.ID] {
+				ordered = append(ordered, p)
+			}
+		}
+	}
+	copy(projects, ordered)
+}
+
 func defaultTagsCommand(client *godoist.Todoist, cfg DefaultTagsConfig) error {
 	if len(cfg.AvailableTags) == 0 {
 		return fmt.Errorf("no available tags configured; set default_tags.available_tags in config")
@@ -83,6 +122,8 @@ func defaultTagsCommand(client *godoist.Todoist, cfg DefaultTagsConfig) error {
 	if len(allProjects) == 0 {
 		return fmt.Errorf("no projects found")
 	}
+
+	sortProjectsByOrder(allProjects)
 
 	options := make([]huh.Option[string], 0, len(allProjects))
 	for _, p := range allProjects {
