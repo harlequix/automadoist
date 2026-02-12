@@ -64,15 +64,23 @@ func applyDefaultTags(client *godoist.Todoist, nextTasks []*godoist.Task, projec
 	if len(projectTags) == 0 {
 		return
 	}
+	type taskWork struct {
+		task *godoist.Task
+		tags []string
+	}
+	var work []taskWork
 	for _, task := range nextTasks {
 		tags, ok := projectTags[task.ProjectID]
 		if !ok {
 			continue
 		}
-		for _, tag := range tags {
-			task.AddLabel(tag)
-		}
+		work = append(work, taskWork{task, tags})
 	}
+	runParallel(work, func(w taskWork) {
+		for _, tag := range w.tags {
+			w.task.AddLabel(tag)
+		}
+	})
 }
 
 // sortProjectsByOrder sorts projects into a stable tree order matching

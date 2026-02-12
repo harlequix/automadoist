@@ -71,15 +71,15 @@ func process_next_items(client *godoist.Todoist, cfg NextItemsConfig) {
 		}
 	}
 
-	for _, t := range needAddition {
+	runParallel(needAddition, func(t *godoist.Task) {
 		logger.Debug("Add label to task", "task", t.Content, "label", cfg.ManagedLabels[0])
 		t.AddLabel(cfg.ManagedLabels[0])
-	}
+	})
 
-	for _, t := range needRemoval {
+	runParallel(needRemoval, func(t *godoist.Task) {
 		logger.Debug("Remove label from task", "task", t.Content, "label", cfg.ManagedLabels[0])
 		t.RemoveLabel(cfg.ManagedLabels[0])
-	}
+	})
 
 	applyDefaultTags(client, nextTasks, allSubProjects)
 	applyColorPriorities(client, nextTasks, allSubProjects, cfg)
@@ -195,6 +195,12 @@ func applyColorPriorities(client *godoist.Todoist, nextTasks []*godoist.Task, pr
 	for _, project := range projects {
 		projectColors[project.ID] = project.Color
 	}
+	type priorityUpdate struct {
+		task     *godoist.Task
+		color    string
+		priority int
+	}
+	var updates []priorityUpdate
 	for _, task := range nextTasks {
 		color, ok := projectColors[task.ProjectID]
 		if !ok {
@@ -205,8 +211,11 @@ func applyColorPriorities(client *godoist.Todoist, nextTasks []*godoist.Task, pr
 			continue
 		}
 		if task.Priority == godoist.VERY_LOW {
-			logger.Debug("Setting priority from project color", "task", task.Content, "color", color, "priority", priority)
-			task.Update("priority", godoist.PRIORITY_LEVEL(priority))
+			updates = append(updates, priorityUpdate{task, color, priority})
 		}
 	}
+	runParallel(updates, func(u priorityUpdate) {
+		logger.Debug("Setting priority from project color", "task", u.task.Content, "color", u.color, "priority", u.priority)
+		u.task.Update("priority", godoist.PRIORITY_LEVEL(u.priority))
+	})
 }

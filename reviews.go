@@ -79,14 +79,18 @@ func reviews(client *godoist.Todoist, cfg ReviewsConfig) {
 	} else if cfg.Clean {
 		comparing = GetTasks(projects)
 	}
+	var toRemove []*godoist.Task
 	for _, task := range comparing {
 		if hasLabel([]string{cfg.Label}, task) && !isTaskInList(task, reviewTasks) {
-			logger.Debug("Removing label", "label", cfg.Label, "task", task)
-			task.RemoveLabel(cfg.Label)
+			toRemove = append(toRemove, task)
 		}
 	}
-	for _, task := range needsReviewTasks {
+	runParallel(toRemove, func(task *godoist.Task) {
+		logger.Debug("Removing label", "label", cfg.Label, "task", task)
+		task.RemoveLabel(cfg.Label)
+	})
+	runParallel(needsReviewTasks, func(task *godoist.Task) {
 		task.AddLabel(cfg.Label)
-	}
+	})
 
 }
