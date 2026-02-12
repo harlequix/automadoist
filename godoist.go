@@ -146,7 +146,7 @@ func main() {
 						return err
 					}
 					process_next_items(client, cfg.NextItems)
-					client.API.Commit()
+					client.Commit()
 					finish := time.Now()
 					logger.Info("Finished", "duration", finish.Sub(start))
 					return nil
@@ -184,7 +184,7 @@ func main() {
 						cfg.ReviewsConfig.NextItemsConfig = cfg.NextItems
 					}
 					reviews(client, cfg.ReviewsConfig)
-					client.API.Commit()
+					client.Commit()
 					finish := time.Now()
 					logger.Info("Finished", "duration", finish.Sub(start))
 					return nil

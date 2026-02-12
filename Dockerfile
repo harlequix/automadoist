@@ -5,12 +5,11 @@ FROM golang:1.25 AS build-stage
 
 WORKDIR /app
 
-COPY automadoist/go.mod automadoist/go.sum ./
+COPY go.mod go.sum ./
 RUN go mod edit -dropreplace github.com/harlequix/godoist && go mod tidy && go mod download
 
-COPY automadoist/ ./
-COPY godoist/ /godoist/
-RUN go mod edit -replace github.com/harlequix/godoist=/godoist
+COPY . ./
+RUN go mod edit -dropreplace github.com/harlequix/godoist
 
 RUN CGO_ENABLED=0 GOOS=linux go build -o /automadoist
 

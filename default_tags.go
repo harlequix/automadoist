@@ -180,7 +180,7 @@ func defaultTagsCommand(client *godoist.Todoist, cfg DefaultTagsConfig) error {
 
 		newDescription := setDefaultTagsInDescription(project.Description, selectedTags)
 		project.Update("description", newDescription)
-		client.API.Commit()
+		client.Commit()
 
 		if len(selectedTags) > 0 {
 			fmt.Printf("Set default tags for %q: %s\n", project.Name, strings.Join(selectedTags, ", "))
