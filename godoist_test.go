@@ -39,10 +39,22 @@ func TestConfigVerify(t *testing.T) {
 			t.Error("expected error for empty token")
 		}
 	})
-	t.Run("valid token", func(t *testing.T) {
-		cfg := config{Token: "abc123"}
+	t.Run("valid token with defaults", func(t *testing.T) {
+		cfg := config{Token: "abc123", NextItems: defaultNextItemsConfig(), ReviewsConfig: defaultReviewsConfig(NextItemsConfig{})}
 		if err := cfg.Verify(); err != nil {
 			t.Errorf("unexpected error: %v", err)
+		}
+	})
+	t.Run("empty managed labels", func(t *testing.T) {
+		cfg := config{Token: "abc123", NextItems: NextItemsConfig{EntryPoint: "projects"}, ReviewsConfig: defaultReviewsConfig(NextItemsConfig{})}
+		if err := cfg.Verify(); err == nil {
+			t.Error("expected error for empty managed_labels")
+		}
+	})
+	t.Run("empty review label", func(t *testing.T) {
+		cfg := config{Token: "abc123", NextItems: defaultNextItemsConfig(), ReviewsConfig: ReviewsConfig{Label: ""}}
+		if err := cfg.Verify(); err == nil {
+			t.Error("expected error for empty review label")
 		}
 	})
 }

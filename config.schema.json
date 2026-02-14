@@ -1,0 +1,126 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/harlequix/automadoist/config.schema.json",
+  "title": "Automadoist Configuration",
+  "description": "Configuration schema for the Automadoist CLI tool",
+  "type": "object",
+  "properties": {
+    "token": {
+      "type": "string",
+      "description": "Todoist API token. Can also be set via GODOIST_TOKEN env var.",
+      "minLength": 1
+    },
+    "next_items": {
+      "type": "object",
+      "description": "Configuration for the next_items command",
+      "properties": {
+        "entry_point": {
+          "type": "string",
+          "description": "Name of the root project to traverse",
+          "default": "projects"
+        },
+        "skip_prefixes": {
+          "type": "array",
+          "description": "Task name prefixes to skip (tasks starting with these are not considered actionable)",
+          "items": { "type": "string" },
+          "default": ["*"]
+        },
+        "recursive": {
+          "type": "boolean",
+          "description": "Whether to recursively traverse subprojects",
+          "default": true
+        },
+        "sequential_marker": {
+          "type": "string",
+          "description": "Suffix on parent task names indicating sequential processing (only last child is actionable)",
+          "default": "!"
+        },
+        "skip_deadline": {
+          "type": "string",
+          "description": "Deadline skip mode. 'not_overdue' skips tasks with future deadlines.",
+          "enum": ["not_overdue", ""],
+          "default": "not_overdue"
+        },
+        "managed_labels": {
+          "type": "array",
+          "description": "Labels managed by automadoist. The FIRST label is the primary label (e.g. 'next') that gets added to indicate a task is actionable. All listed labels are used for detection: any task carrying one of these is considered managed. When a task loses its primary status, all managed labels are stripped.",
+          "items": { "type": "string" },
+          "minItems": 1,
+          "default": ["next"]
+        },
+        "ignore_labels": {
+          "type": "array",
+          "description": "Labels that cause a task to be skipped during processing. These labels are never stripped by automadoist.",
+          "items": { "type": "string" },
+          "default": ["waiting", "review"]
+        },
+        "prune": {
+          "type": "boolean",
+          "description": "Whether to prune (strip managed labels from) tasks that no longer qualify",
+          "default": true
+        },
+        "color_priority": {
+          "type": "object",
+          "description": "Map of project color names to priority levels (1=very low, 2=low, 3=medium, 4=high). Tasks in projects with these colors get automatic priority assignment when they first gain the primary label.",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4
+          }
+        },
+        "context_labels": {
+          "type": "array",
+          "description": "Labels to save and restore when tasks transition in and out of primary label status. When a task loses its primary label, these labels (and priority) are saved as a context comment. When the task regains the primary label, saved values are restored, preserving user customizations.",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "review": {
+      "type": "object",
+      "description": "Configuration for the reviews command",
+      "properties": {
+        "label": {
+          "type": "string",
+          "description": "Label to apply to review-eligible tasks",
+          "default": "review"
+        },
+        "prefixes": {
+          "type": "array",
+          "description": "Task name prefixes that indicate a review task",
+          "items": { "type": "string" },
+          "default": ["*"]
+        },
+        "purge": {
+          "type": "boolean",
+          "description": "If true, scan ALL tasks (not just project tasks) for stale review labels to remove",
+          "default": false
+        },
+        "clean": {
+          "type": "boolean",
+          "description": "If true, remove review labels from tasks in entry_point projects that no longer qualify",
+          "default": true
+        },
+        "next_items": {
+          "description": "Override next_items config for review traversal. If not set, inherits from top-level next_items.",
+          "$ref": "#/properties/next_items"
+        }
+      },
+      "additionalProperties": false
+    },
+    "default_tags": {
+      "type": "object",
+      "description": "Configuration for the default_tags interactive command",
+      "properties": {
+        "available_tags": {
+          "type": "array",
+          "description": "Tags available for selection in the interactive default_tags configurator. These are offered as choices when assigning default tags to projects.",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": ["token"],
+  "additionalProperties": false
+}

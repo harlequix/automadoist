@@ -18,6 +18,7 @@ type NextItemsConfig struct {
 	IgnoreLabels     []string       `koanf:"ignore_labels"`
 	Prune            bool           `koanf:"prune"`
 	ColorPriority    map[string]int `koanf:"color_priority"`
+	ContextLabels    []string       `koanf:"context_labels"`
 }
 
 func defaultNextItemsConfig() NextItemsConfig {
@@ -71,18 +72,92 @@ func process_next_items(client *godoist.Todoist, cfg NextItemsConfig) {
 		}
 	}
 
-	runParallel(needAddition, func(t *godoist.Task) {
-		logger.Debug("Add label to task", "task", t.Content, "label", cfg.ManagedLabels[0])
-		t.AddLabel(cfg.ManagedLabels[0])
-	})
+	// Precompute project lookup maps for context operations
+	projectTags, projectColors := buildProjectMaps(allSubProjects)
+	contextEnabled := len(cfg.ContextLabels) > 0
 
+	// Phase 1: Tasks LOSING @next
 	runParallel(needRemoval, func(t *godoist.Task) {
-		logger.Debug("Remove label from task", "task", t.Content, "label", cfg.ManagedLabels[0])
-		t.RemoveLabel(cfg.ManagedLabels[0])
+		logger.Debug("Processing removal", "task", t.Content, "label", cfg.ManagedLabels[0])
+
+		// Save context if task has customizations
+		if contextEnabled {
+			defaultLabels, defaultPriority := computeExpectedDefaults(t, projectTags, projectColors, cfg.ColorPriority, cfg.ContextLabels)
+			if hasCustomizations(t, defaultLabels, defaultPriority, cfg.ContextLabels) {
+				logger.Debug("Saving context for task", "task", t.Content)
+				if err := saveContext(t, cfg.ContextLabels); err != nil {
+					logger.Error("Failed to save context", "task", t.Content, "error", err)
+				}
+			}
+		}
+
+		// Strip labels: keep only ignore labels
+		retained := computeRetainedLabels(t, cfg.IgnoreLabels)
+		t.Update("labels", retained)
+
+		// Reset priority
+		if t.Priority != godoist.VERY_LOW {
+			t.Update("priority", godoist.VERY_LOW)
+		}
 	})
 
-	applyDefaultTags(client, nextTasks, allSubProjects)
-	applyColorPriorities(client, nextTasks, allSubProjects, cfg)
+	// Phase 2: Tasks GAINING @next
+	runParallel(needAddition, func(t *godoist.Task) {
+		logger.Debug("Processing addition", "task", t.Content, "label", cfg.ManagedLabels[0])
+
+		// Check for saved context
+		var saved *taskContext
+		if contextEnabled {
+			var err error
+			saved, err = restoreContext(t)
+			if err != nil {
+				logger.Error("Failed to restore context", "task", t.Content, "error", err)
+			}
+		}
+
+		if saved != nil {
+			// Restore from saved context
+			labelSet := toSet(t.Labels)
+			labelSet[cfg.ManagedLabels[0]] = true
+			for _, label := range saved.Labels {
+				labelSet[label] = true
+			}
+			var labels []string
+			for label := range labelSet {
+				labels = append(labels, label)
+			}
+			t.Update("labels", labels)
+			t.Update("priority", saved.Priority)
+			if err := t.DeleteContext(); err != nil {
+				logger.Error("Failed to delete context", "task", t.Content, "error", err)
+			}
+			logger.Debug("Restored context for task", "task", t.Content, "labels", saved.Labels, "priority", saved.Priority)
+		} else {
+			// Apply defaults for newly qualifying tasks
+			labelSet := toSet(t.Labels)
+			labelSet[cfg.ManagedLabels[0]] = true
+			if tags, ok := projectTags[t.ProjectID]; ok {
+				for _, tag := range tags {
+					labelSet[tag] = true
+				}
+			}
+			var labels []string
+			for label := range labelSet {
+				labels = append(labels, label)
+			}
+			t.Update("labels", labels)
+
+			// Apply color priority only if currently VERY_LOW
+			if t.Priority == godoist.VERY_LOW {
+				if color, ok := projectColors[t.ProjectID]; ok {
+					if priority, ok := cfg.ColorPriority[color]; ok {
+						logger.Debug("Setting priority from project color", "task", t.Content, "color", color, "priority", priority)
+						t.Update("priority", godoist.PRIORITY_LEVEL(priority))
+					}
+				}
+			}
+		}
+	})
 }
 
 func collectProjects(project godoist.Project) []godoist.Project {
@@ -187,35 +262,3 @@ func getNextTasks(project godoist.Project, cfg NextItemsConfig) []*godoist.Task 
 	return nextTasks
 }
 
-func applyColorPriorities(client *godoist.Todoist, nextTasks []*godoist.Task, projects []godoist.Project, cfg NextItemsConfig) {
-	if len(cfg.ColorPriority) == 0 {
-		return
-	}
-	projectColors := make(map[string]string)
-	for _, project := range projects {
-		projectColors[project.ID] = project.Color
-	}
-	type priorityUpdate struct {
-		task     *godoist.Task
-		color    string
-		priority int
-	}
-	var updates []priorityUpdate
-	for _, task := range nextTasks {
-		color, ok := projectColors[task.ProjectID]
-		if !ok {
-			continue
-		}
-		priority, ok := cfg.ColorPriority[color]
-		if !ok {
-			continue
-		}
-		if task.Priority == godoist.VERY_LOW {
-			updates = append(updates, priorityUpdate{task, color, priority})
-		}
-	}
-	runParallel(updates, func(u priorityUpdate) {
-		logger.Debug("Setting priority from project color", "task", u.task.Content, "color", u.color, "priority", u.priority)
-		u.task.Update("priority", godoist.PRIORITY_LEVEL(u.priority))
-	})
-}

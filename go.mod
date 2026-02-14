@@ -4,7 +4,7 @@ go 1.25.1
 
 require (
 	github.com/charmbracelet/huh v0.8.0
-	github.com/harlequix/godoist v0.3.2
+	github.com/harlequix/godoist v0.4.0
 	github.com/knadh/koanf/parsers/yaml v1.1.0
 	github.com/knadh/koanf/providers/cliflagv2 v0.0.0-20250101080848-4a21f9b42785
 	github.com/knadh/koanf/providers/env v1.1.0
@@ -54,3 +54,5 @@ require (
 	golang.org/x/sys v0.33.0 // indirect
 	golang.org/x/text v0.23.0 // indirect
 )
+
+replace github.com/harlequix/godoist => /home/jack/Projects/godoist

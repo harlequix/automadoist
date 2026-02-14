@@ -53,7 +53,7 @@ func setDefaultTagsInDescription(description string, tags []string) string {
 	return description + "\n" + marker
 }
 
-func applyDefaultTags(client *godoist.Todoist, nextTasks []*godoist.Task, projects []godoist.Project) {
+func buildProjectTagsMap(projects []godoist.Project) map[string][]string {
 	projectTags := make(map[string][]string)
 	for _, p := range projects {
 		tags := parseDefaultTags(p.Description)
@@ -61,26 +61,7 @@ func applyDefaultTags(client *godoist.Todoist, nextTasks []*godoist.Task, projec
 			projectTags[p.ID] = tags
 		}
 	}
-	if len(projectTags) == 0 {
-		return
-	}
-	type taskWork struct {
-		task *godoist.Task
-		tags []string
-	}
-	var work []taskWork
-	for _, task := range nextTasks {
-		tags, ok := projectTags[task.ProjectID]
-		if !ok {
-			continue
-		}
-		work = append(work, taskWork{task, tags})
-	}
-	runParallel(work, func(w taskWork) {
-		for _, tag := range w.tags {
-			w.task.AddLabel(tag)
-		}
-	})
+	return projectTags
 }
 
 // sortProjectsByOrder sorts projects into a stable tree order matching

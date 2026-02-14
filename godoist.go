@@ -27,6 +27,35 @@ func (c config) Verify() error {
 	if c.Token == "" {
 		return fmt.Errorf("token is required")
 	}
+	if err := c.NextItems.verify(); err != nil {
+		return fmt.Errorf("next_items: %w", err)
+	}
+	if err := c.ReviewsConfig.verify(); err != nil {
+		return fmt.Errorf("reviews: %w", err)
+	}
+	return nil
+}
+
+func (c NextItemsConfig) verify() error {
+	if len(c.ManagedLabels) == 0 {
+		return fmt.Errorf("managed_labels must contain at least one label")
+	}
+	if c.EntryPoint == "" {
+		return fmt.Errorf("entry_point must not be empty")
+	}
+	if len(c.ManagedLabels) > 1 {
+		logger.Warn("managed_labels has multiple entries; the first label will be used as the primary label",
+			"primary", c.ManagedLabels[0],
+			"all", c.ManagedLabels,
+		)
+	}
+	return nil
+}
+
+func (c ReviewsConfig) verify() error {
+	if c.Label == "" {
+		return fmt.Errorf("label must not be empty")
+	}
 	return nil
 }
 
