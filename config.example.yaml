@@ -1,0 +1,89 @@
+# Automadoist configuration
+# See config.schema.json for the full schema.
+
+# Todoist API token (required)
+# Get yours at: https://todoist.com/prefs/integrations
+# Can also be set via GODOIST_TOKEN env var.
+token: "your-todoist-api-token"
+
+# Configuration for the "next_items" command.
+# Traverses your project tree and labels actionable leaf tasks.
+next_items:
+  # Root project to start traversal from.
+  entry_point: "projects"
+
+  # Task name prefixes to skip (tasks starting with these are not actionable).
+  # Default: ["*"] — skips tasks prefixed with "*".
+  skip_prefixes:
+    - "*"
+
+  # Recursively traverse subprojects.
+  recursive: true
+
+  # Suffix on parent task names that indicates sequential processing.
+  # Only the last child of a sequential parent is considered actionable.
+  sequential_marker: "!"
+
+  # Deadline skip mode.
+  # "not_overdue" skips tasks whose deadline is in the future.
+  # "" disables deadline-based skipping.
+  skip_deadline: "not_overdue"
+
+  # Labels managed by automadoist.
+  # The FIRST label is the primary label added to actionable tasks.
+  # All listed labels are used for detection; when a task loses its status,
+  # all managed labels are stripped.
+  managed_labels:
+    - "next"
+
+  # Labels that cause a task to be skipped during processing.
+  # Tasks with any of these labels are never considered actionable.
+  # These labels are never stripped by automadoist.
+  ignore_labels:
+    - "waiting"
+    - "review"
+
+  # Whether to prune (strip managed labels from) tasks that no longer qualify.
+  prune: true
+
+  # Map of project color names to priority levels (1-4).
+  # Tasks in matching projects get automatic priority when they gain the primary label.
+  # color_priority:
+  #   red: 4
+  #   orange: 3
+  #   yellow: 2
+
+  # Labels to save/restore when tasks transition in and out of primary label status.
+  # Preserves user customizations (labels + priority) across transitions.
+  # context_labels:
+  #   - "home"
+  #   - "work"
+  #   - "errand"
+
+# Configuration for the "reviews" command.
+# Finds tasks matching review prefixes and manages a review label.
+review:
+  # Label applied to review-eligible tasks.
+  label: "review"
+
+  # Task name prefixes that indicate a review task.
+  prefixes:
+    - "*"
+
+  # If true, scan ALL tasks (not just project tasks) for stale review labels to remove.
+  purge: false
+
+  # If true, remove review labels from tasks in entry_point projects that no longer qualify.
+  clean: true
+
+  # Override next_items config for review traversal (optional).
+  # If not set, inherits from top-level next_items.
+  # next_items:
+  #   entry_point: "projects"
+
+# Configuration for the "default_tags" interactive command.
+# default_tags:
+#   available_tags:
+#     - "home"
+#     - "work"
+#     - "errand"

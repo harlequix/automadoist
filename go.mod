@@ -54,5 +54,3 @@ require (
 	golang.org/x/sys v0.33.0 // indirect
 	golang.org/x/text v0.23.0 // indirect
 )
-
-replace github.com/harlequix/godoist => /home/jack/Projects/godoist
