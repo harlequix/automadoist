@@ -73,7 +73,7 @@ func reviews(client *godoist.Todoist, cfg ReviewsConfig) {
 		}
 	}
 
-	var comparing []*godoist.Task = []*godoist.Task{}
+	var comparing = []*godoist.Task{}
 	if cfg.Purge {
 		comparing = client.Tasks.All()
 	} else if cfg.Clean {
@@ -87,7 +87,9 @@ func reviews(client *godoist.Todoist, cfg ReviewsConfig) {
 	}
 	runParallel(toRemove, func(task *godoist.Task) {
 		logger.Debug("Removing label", "label", cfg.Label, "task", task)
-		task.RemoveLabel(cfg.Label)
+		if err := task.RemoveLabel(cfg.Label); err != nil {
+			logger.Error("Failed to remove label", "label", cfg.Label, "task", task.Content, "error", err)
+		}
 	})
 	runParallel(needsReviewTasks, func(task *godoist.Task) {
 		task.AddLabel(cfg.Label)

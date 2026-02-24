@@ -93,11 +93,15 @@ func process_next_items(client *godoist.Todoist, cfg NextItemsConfig) {
 
 		// Strip labels: keep only ignore labels
 		retained := computeRetainedLabels(t, cfg.IgnoreLabels)
-		t.Update("labels", retained)
+		if err := t.Update("labels", retained); err != nil {
+			logger.Error("Failed to update labels", "task", t.Content, "error", err)
+		}
 
 		// Reset priority
 		if t.Priority != godoist.VERY_LOW {
-			t.Update("priority", godoist.VERY_LOW)
+			if err := t.Update("priority", godoist.VERY_LOW); err != nil {
+				logger.Error("Failed to update priority", "task", t.Content, "error", err)
+			}
 		}
 	})
 
@@ -126,8 +130,12 @@ func process_next_items(client *godoist.Todoist, cfg NextItemsConfig) {
 			for label := range labelSet {
 				labels = append(labels, label)
 			}
-			t.Update("labels", labels)
-			t.Update("priority", saved.Priority)
+			if err := t.Update("labels", labels); err != nil {
+				logger.Error("Failed to update labels", "task", t.Content, "error", err)
+			}
+			if err := t.Update("priority", saved.Priority); err != nil {
+				logger.Error("Failed to update priority", "task", t.Content, "error", err)
+			}
 			if err := t.DeleteContext(); err != nil {
 				logger.Error("Failed to delete context", "task", t.Content, "error", err)
 			}
@@ -145,14 +153,18 @@ func process_next_items(client *godoist.Todoist, cfg NextItemsConfig) {
 			for label := range labelSet {
 				labels = append(labels, label)
 			}
-			t.Update("labels", labels)
+			if err := t.Update("labels", labels); err != nil {
+				logger.Error("Failed to update labels", "task", t.Content, "error", err)
+			}
 
 			// Apply color priority only if currently VERY_LOW
 			if t.Priority == godoist.VERY_LOW {
 				if color, ok := projectColors[t.ProjectID]; ok {
 					if priority, ok := cfg.ColorPriority[color]; ok {
 						logger.Debug("Setting priority from project color", "task", t.Content, "color", color, "priority", priority)
-						t.Update("priority", godoist.PRIORITY_LEVEL(priority))
+						if err := t.Update("priority", godoist.PRIORITY_LEVEL(priority)); err != nil {
+							logger.Error("Failed to update priority", "task", t.Content, "error", err)
+						}
 					}
 				}
 			}

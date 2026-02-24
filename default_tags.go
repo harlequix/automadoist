@@ -168,8 +168,12 @@ func defaultTagsCommand(client *godoist.Todoist, cfg DefaultTagsConfig) error {
 		}
 
 		newDescription := setDefaultTagsInDescription(project.Description, selectedTags)
-		project.Update("description", newDescription)
-		client.Commit()
+		if err := project.Update("description", newDescription); err != nil {
+			return fmt.Errorf("updating project description: %w", err)
+		}
+		if err := client.Commit(); err != nil {
+			return fmt.Errorf("committing changes: %w", err)
+		}
 
 		if len(selectedTags) > 0 {
 			fmt.Printf("Set default tags for %q: %s\n", project.Name, strings.Join(selectedTags, ", "))

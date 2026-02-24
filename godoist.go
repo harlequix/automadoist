@@ -87,7 +87,7 @@ func ParseLevel(s string) (slog.Level, error) {
 }
 
 func getConfig(c *cli.Context) (*config, error) {
-	var cfg config = defaultConfig
+	var cfg = defaultConfig
 	var loglevel string
 	if c.Bool("debug") {
 		loglevel = "debug"
@@ -111,8 +111,8 @@ func getConfig(c *cli.Context) (*config, error) {
 		return nil, fmt.Errorf("loading cli flags: %w", err)
 	}
 	if err := k.Load(env.Provider(ENV_PREFIX, ".", func(s string) string {
-		return strings.Replace(strings.ToLower(
-			strings.TrimPrefix(s, ENV_PREFIX)), "_", ".", -1)
+		return strings.ReplaceAll(strings.ToLower(
+			strings.TrimPrefix(s, ENV_PREFIX)), "_", ".")
 	}), nil); err != nil {
 		return nil, fmt.Errorf("loading env vars: %w", err)
 	}
@@ -175,7 +175,9 @@ func main() {
 						return err
 					}
 					process_next_items(client, cfg.NextItems)
-					client.Commit()
+					if err := client.Commit(); err != nil {
+						return err
+					}
 					finish := time.Now()
 					logger.Info("Finished", "duration", finish.Sub(start))
 					return nil
@@ -213,7 +215,9 @@ func main() {
 						cfg.ReviewsConfig.NextItemsConfig = cfg.NextItems
 					}
 					reviews(client, cfg.ReviewsConfig)
-					client.Commit()
+					if err := client.Commit(); err != nil {
+						return err
+					}
 					finish := time.Now()
 					logger.Info("Finished", "duration", finish.Sub(start))
 					return nil
